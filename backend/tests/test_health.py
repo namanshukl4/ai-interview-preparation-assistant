@@ -4,13 +4,21 @@ import unittest
 from importlib import import_module
 
 from app.services.parsing.resume_parser import extract_resume_text
+from app.services.parsing.jd_parser import extract_jd_text
 
 
 Document = import_module("docx").Document
 
 
-def _write_test_pdf(path: Path) -> None:
-    stream = b"BT\n/F1 12 Tf\n100 750 Td\n(Naman Shukla) Tj\n0 -20 Td\n(Python FastAPI SQL) Tj\nET\n"
+def _write_test_pdf(
+    path: Path,
+    first_line: str = "Naman Shukla",
+    second_line: str = "Python FastAPI SQL",
+) -> None:
+    stream = (
+        f"BT\n/F1 12 Tf\n100 750 Td\n({first_line}) Tj\n"
+        f"0 -20 Td\n({second_line}) Tj\nET\n"
+    ).encode()
     objects = [
         b"<< /Type /Catalog /Pages 2 0 R >>",
         b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
@@ -68,3 +76,54 @@ def test_unsupported_resume_format(tmp_path: Path):
         ValueError, "Unsupported resume format"
     ):
         extract_resume_text(str(txt_path))
+
+def test_extract_jd_text_from_pdf(tmp_path: Path):
+    pdf_path = tmp_path / "job_description.pdf"
+
+    _write_test_pdf(
+        pdf_path,
+        first_line="Software Engineer",
+        second_line="Python FastAPI SQL REST APIs",
+    )
+
+    text = extract_jd_text(str(pdf_path))
+
+    assert "Software Engineer" in text
+    assert "Python FastAPI SQL REST APIs" in text
+
+
+def test_extract_jd_text_from_docx(tmp_path: Path):
+    docx_path = tmp_path / "job_description.docx"
+
+    document = Document()
+    document.add_paragraph("Software Engineer")
+    document.add_paragraph("Python FastAPI SQL REST APIs")
+    document.save(str(docx_path))
+
+    text = extract_jd_text(str(docx_path))
+
+    assert "Software Engineer" in text
+    assert "Python FastAPI SQL REST APIs" in text
+
+
+def test_extract_jd_text_from_txt(tmp_path: Path):
+    txt_path = tmp_path / "job_description.txt"
+    txt_path.write_text(
+        "Software Engineer\nPython FastAPI SQL REST APIs",
+        encoding="utf-8",
+    )
+
+    text = extract_jd_text(str(txt_path))
+
+    assert "Software Engineer" in text
+    assert "Python FastAPI SQL REST APIs" in text
+
+
+def test_unsupported_jd_format(tmp_path: Path):
+    file_path = tmp_path / "job_description.csv"
+    file_path.write_text("role,skills")
+
+    with unittest.TestCase().assertRaisesRegex(
+        ValueError, "Unsupported job description format"
+    ):
+        extract_jd_text(str(file_path))
