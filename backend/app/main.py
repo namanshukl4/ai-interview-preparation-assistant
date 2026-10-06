@@ -1,7 +1,6 @@
-from importlib import import_module
+from fastapi import FastAPI
 
-
-FastAPI = import_module("fastapi").FastAPI
+from app.api.routes.interview import router as interview_router
 
 
 app = FastAPI(
@@ -12,6 +11,9 @@ app = FastAPI(
     ),
     version="0.1.0",
 )
+
+
+app.include_router(interview_router, prefix="/api")
 
 
 @app.get("/")
@@ -25,6 +27,4 @@ def root():
 
 @app.get("/health")
 def health_check():
-    return {
-        "status": "healthy"
-    }
+    return {"status": "healthy"}
