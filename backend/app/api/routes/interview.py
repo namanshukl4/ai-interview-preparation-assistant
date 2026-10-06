@@ -1,11 +1,10 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from app.services.evaluation.answer_evaluator import evaluate_answer
+from app.services.generation.question_generator import generate_question
 from app.services.interview.adaptive_engine import decide_next_action
 from app.services.interview.session_engine import InterviewSessionEngine
-from app.services.evaluation.answer_evaluator import evaluate_answer
-from app.services.generation.mock_llm import MockLLM
-from app.services.generation.question_generator import generate_question
 
 
 router = APIRouter(
@@ -29,18 +28,14 @@ class AnswerRequest(BaseModel):
 
 
 def create_session_engine() -> InterviewSessionEngine:
-    llm = MockLLM()
+    """
+    Create the interview orchestration engine.
+
+    Question generation is completely independent from any LLM.
+    """
 
     return InterviewSessionEngine(
-        question_generator=lambda candidate_profile, job_profile, interview_type, difficulty: (
-            generate_question(
-                llm,
-                candidate_profile,
-                job_profile,
-                interview_type,
-                difficulty,
-            )
-        ),
+        question_generator=generate_question,
         answer_evaluator=evaluate_answer,
         adaptive_engine=decide_next_action,
     )
